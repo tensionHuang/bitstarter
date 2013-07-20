@@ -45,15 +45,40 @@ var loadChecks = function(checksfile) {
 };
 
 var checkHtmlFile = function(htmlfile, checksfile) {
-    $ = cheerioHtmlFile(htmlfile);
-    var checks = loadChecks(checksfile).sort();
+    checkHtml(cheerioHtmlFile(htmlfile),checksfile);
+};
+
+var checkHtml = function(html, checkfile){
+    $ = html;
+    var checks = loadChecks(checkfile).sort();
     var out = {};
-    for(var ii in checks) {
-        var present = $(checks[ii]).length > 0;
-        out[checks[ii]] = present;
+    for(var ii in checks){
+    	var present = $(checks[ii]).length > 0;
+	out[checks[ii]] = present;
     }
     return out;
-};
+}
+
+var checkUrlFile = function(urlfile, checkfile){
+    rest.get(urlfile).on('complete',function(result){
+    	if(result instanceof Error){
+		console.log('Error: ' + result.message);
+		process.exit(1);
+	}else{
+ 		
+		$ = cheerio.load(result);
+       		var checks = loadChecks(checkfile).sort();
+        	var out = {};
+         	for(var ii in checks){
+	              var present = $(checks[ii]).length > 0;
+	               out[checks[ii]] = present;
+	         }
+    		 console.log(JSON.stringify(out,checkfile,null,4)); 
+		 
+		 //console.log(JSON.stringify(checkHtml(cheerio.load(result),checkfile),null,4));
+	}
+    });
+}
 
 var clone = function(fn) {
     // Workaround for commander.js issue.
@@ -65,10 +90,11 @@ if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
         .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
+	.option('-u, --url <url_file>', 'Path to url')
         .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
+
+    if(program.file) checkHtmlFile(program.file, program.checks);
+    if(program.url) checkUrlFile(program.url, program.checks);
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
